@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewprot" content="width=device-width, initial-scale=1.0"/>
+        <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+        <title>dddd</title>
+        <style type="text/css">
+          canvas {
+            border: 1px solid black;
+            margin: 100px;
+          }
+          .item{
+            position: fixed;
+            right: 200px;
+            top: 200px;
+            border: 1px solid black;
+            padding: 30px;
+            border-radius: 15px;
+          }
+        </style>
+    </head>
+    <body>
+      
+      <canvas id="myCanvas" width="500" height="500"></canvas>
+      
+         
+         <!--这个是用来更改数值,测试的-->
+         <div class="item">
+           house: <input type="range" min="0" max="1000" value="500"  name="house" id="house" value="" /><br />
+           car : <input type="range" min="0" max="1000" value="500" name="car" id="car" value="" /><br />
+           money : <input type="range" min="0" max="1000" value="500" name="money" id="money" value="" />
+         </div>
+         
+        <script type="text/javascript">
+            var myCanvas = document.getElementById("myCanvas");
+            var ctx = myCanvas.getContext("2d");
+            // 返回一个随机整数数
+            function randomNum (num) {
+                return parseInt(Math.random() * num + 1);
+            }
+            // 返回一个随机颜色
+            function randomColor () {
+                return 'rgb(' + randomNum(255) +','+randomNum(255)+','+randomNum(255)+')';
+            }
+            
+            // 假设有三个值, 先进行画图.
+            // 基本数值
+            
+            // 假设一个值
+            var data = {
+            }
+            data.house = 55;
+            data.money = 21;
+            data.car = 77;
+            
+            
+            // 构造函数
+            function Data (data,ctx) {
+              // data 传入的是基本数据
+              // ctx 是要进行作画的 canvas 画笔
+              
+              // 对传进来的data 进行处理, 放在实例上的data1属性中
+              this.createData = function (data) {
+                
+                this.data1 = {};
+                var data1 = this.data1;
+                // data1.sum 为总资产, 方便后面求出百分比, 再由百分比换算成角度
+                data1.sum = 0;
+                for(var key in data) {
+                  data1.sum += Number(data[key]);
+                }
+                for(var key in data){
+                  // data1最后生成的结构是这样的
+                  //data1 = {
+                    //house : {
+                      //rad : 1.2PI(数据必要当真),
+                      //bgColor : "red"(数据不要当真)
+                    //},
+                    //...其他属性的结构也一样. 可知, this.createData 方法就是把data的数值稍微处理了一下变成 data1 这种形式,方便作画.
+                  //}
+                  
+                  data1[key] = {};
+                  data1[key].rad = data[key] / data1.sum * 2 * Math.PI;
+                  if (!data1[key].bgColor) {
+                    data1[key].bgColor = randomColor();
+                  }
+                }
+              }
+              
+              // 也是返回一个要作画的数据data2, 这个数据是通过动画最后要到达的数据. 数据结构跟data1 相同.
+              this.targetData = function (data) {
+                // data2 为 要到达的 数据.
+                this.data2 = new this.createData(data).data1;
+                console.log(this.data2);
+                return this;
+              }
+              // 画图
+              this.render = function () {
+                var beginRad = 0;
+                var stopRad = 0;
+                var data1 = this.data1;
+                // 有几个属性, 我们就画几个圆弧,下一个圆弧的起始角度为前面的圆弧角度的累加,
+                // 这样就能在一个圆里完整按照比例呈现.
+                for(var key in data1){
+                  if (key == "sum") {
+                    // 属性里的 sum 不应该参与 作图, 实际上, 数据的结构还是有问题的.
+                    continue
+                  }
+                  // 保证 起点是从上一个的终点
+                  beginRad = stopRad;
+                  // 保证终点的数值会累加
+                  stopRad += data1[key].rad;
+                  ctx.beginPath();
+                  ctx.arc(250,250,150,beginRad,stopRad,0);
+                  ctx.lineWidth = 20;
+                  ctx.strokeStyle = data1[key].bgColor;
+                  ctx.stroke();
+                }
+                // 中间总资产 字体的 展示.
+                ctx.font = "20px 微软";
+                ctx.fillStyle = "#007AFF";
+                ctx.textAlign = "center";
+                ctx.verticalAlign = "middle";
+                ctx.clearRect(160,160,190,190);// 这个地方也许有更简单的解决办法,
+                ctx.fillText("总资产为"+data1.sum,255,255);
+              }
+              
+              // 下面是动画相关的部分, 当数值发生变化时, 调用的方法.
+              this.change = function (data) {
+                // 目标数据转换成 作图数据. 也就是生成data2.
+                this.targetData(data);
+                //根据data2 重新赋值给data1
+                // 作图还是根据data1, 但我们让data1的数据产生变化, 接近 data2
+                var self = this;
+                var data2 = self.data2;
+                var data1 = self.data1;
+                data1.sum = data2.sum;
+                cancelAnimationFrame(this.timer);
+                // 开启运动(运动就是数值的变化)
+                this.timer = requestAnimationFrame(function () {
+                  var flag = true;
+                  for(var key in data2) {
+                    // 可知 sum这个属性 设置的很不好.
+                    if (key != "sum") {
+                      // 此处其实是一个兼容处理, 假设变化的值data2, 比原来值data1多出来一个属性,就会出现问题.
+                    if (typeof data1[key] == "undefined") {
+                      console.log(123);
+                        data1[key] = {};
+                        data1[key].rad = 0;
+                        data1[key].bgColor = data2[key].bgColor;
+                    }
+                    // 下面这句是, 运动课里学习过的内容.
+                    // 保证 data1的值,都向着 data2的值接近
+                    // 保证每个data1的值,都足够和data2接近时, 才让 flag 保持 true, 关闭 定时器.关闭运动.
+                    if (Math.abs(data2[key].rad * 100 - data1[key].rad * 100) > 1) {
+                        data1[key].rad += (data2[key].rad*100 - data1[key].rad*100)/ 700;
+                        flag = false;
+                    }
+                    // 每次data1 更新一次, 我们就重新渲染一次.
+                    self.render();
+                  }
+                    }
+                  if (flag) {// 关闭定时器.停止运动.
+                    cancelAnimationFrame(self.timer);
+                    console.log("over");
+                    console.log(data1);
+                  } else {
+                    console.log(111111);
+                    self.change(data);
+                  }
+                },50);
+                
+              }
+              // 初次渲染获得数据, 以及初始作图.
+                this.init = function () {
+                    this.createData(data);
+                    this.render();
+                }
+              this.init();
+            }
+            
+            var a = new Data(data,ctx);
+            
+            
+            // 下面的是用来测试.
+            var house = document.getElementById("house");
+            var car = document.getElementById("car");
+            var money = document.getElementById("money");
+            
+            house.onmouseup = function () {
+              data.house = this.value;
+              console.log(data);
+                a.change(data);
+            }
+            car.onmouseup = function () {
+              data.car = this.value;
+              console.log(data);
+                a.change(data);
+            }
+            money.onmouseup = function () {
+              data.money = this.value;
+              console.log(data);
+                a.change(data);
+            }
+            
+            
+            //a.change({house:123,money:111,car:156,aaa:777});
+
+            // 能解决一个增加属性的问题,
+            // 怎么解决一个减少属性的问题?
+            // 对data2进行处理?
+            
+//            
+//            var timer = setInterval(,50);
+//              
+//          }
+            
+            
+        </script>
+    </body>
+</html>
